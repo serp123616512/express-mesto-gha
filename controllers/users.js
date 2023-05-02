@@ -51,7 +51,7 @@ const patchUserProfile = (req, res) => {
   User.findByIdAndUpdate(userId, { name, about }, { new: true })
     .orFail()
     .then((user) => {
-      res.status(201).send({ data: user });
+      res.status(200).send({ data: user });
     })
     .catch((err) => {
       if (err.name === 'CastError') {
@@ -73,7 +73,7 @@ const patchUserAvatar = (req, res) => {
   User.findByIdAndUpdate(userId, { avatar }, { new: true })
     .orFail()
     .then((user) => {
-      res.status(201).send({ data: user });
+      res.status(200).send({ data: user });
     })
     .catch((err) => {
       if (err.name === 'CastError') {
