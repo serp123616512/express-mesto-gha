@@ -48,7 +48,7 @@ const postUser = (req, res) => {
 const patchUserProfile = (req, res) => {
   const { name, about } = req.body;
   const userId = req.user._id;
-  User.findByIdAndUpdate(userId, { name, about }, { new: true })
+  User.findByIdAndUpdate(userId, { name, about }, { runValidators: true }, { new: true })
     .orFail()
     .then((user) => {
       res.status(200).send({ data: user });
@@ -70,7 +70,7 @@ const patchUserProfile = (req, res) => {
 const patchUserAvatar = (req, res) => {
   const { avatar } = req.body;
   const userId = req.user._id;
-  User.findByIdAndUpdate(userId, { avatar }, { new: true })
+  User.findByIdAndUpdate(userId, { avatar }, { runValidators: true }, { new: true })
     .orFail()
     .then((user) => {
       res.status(200).send({ data: user });
