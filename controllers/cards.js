@@ -1,15 +1,15 @@
 const Card = require('../moduls/cards');
 
-const ERROR_CODE_VALIDATION = 400;
+const ERROR_CODE_BAD_REQUEST = 400;
 const ERROR_CODE_NOT_FOUND = 404;
-const ERROR_CODE_ON_SERVER = 500;
+const ERROR_CODE_INTERNAL_SERVER = 500;
 
 const getCards = (req, res) => {
   Card.find({})
     .then((cards) => {
       res.status(200).send({ data: cards });
     })
-    .catch(() => res.status(ERROR_CODE_ON_SERVER).send({ message: 'Произошла ошибка на сервере' }));
+    .catch(() => res.status(ERROR_CODE_INTERNAL_SERVER).send({ message: 'Произошла ошибка на сервере' }));
 };
 
 const postCard = (req, res) => {
@@ -21,9 +21,9 @@ const postCard = (req, res) => {
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        return res.status(ERROR_CODE_VALIDATION).send({ message: 'Введены некорректные данные' });
+        return res.status(ERROR_CODE_BAD_REQUEST).send({ message: 'Введены некорректные данные' });
       }
-      return res.status(ERROR_CODE_ON_SERVER).send({ message: 'Произошла ошибка на сервере' });
+      return res.status(ERROR_CODE_INTERNAL_SERVER).send({ message: 'Произошла ошибка на сервере' });
     });
 };
 
@@ -35,10 +35,13 @@ const deleteCard = (req, res) => {
       res.status(200).send({ data: card });
     })
     .catch((err) => {
+      if (err.name === 'CastError') {
+        return res.status(ERROR_CODE_BAD_REQUEST).send({ message: 'Введен некорректный идентификатор карточки' });
+      }
       if (err.name === 'DocumentNotFoundError') {
         return res.status(ERROR_CODE_NOT_FOUND).send({ message: `Карточка с id ${req.params.cardId} не найдена` });
       }
-      return res.status(ERROR_CODE_ON_SERVER).send({ message: 'Произошла ошибка на сервере' });
+      return res.status(ERROR_CODE_INTERNAL_SERVER).send({ message: 'Произошла ошибка на сервере' });
     });
 };
 
@@ -51,10 +54,13 @@ const putLike = (req, res) => {
       res.status(201).send({ data: card });
     })
     .catch((err) => {
+      if (err.name === 'CastError') {
+        return res.status(ERROR_CODE_BAD_REQUEST).send({ message: 'Введен некорректный идентификатор карточки' });
+      }
       if (err.name === 'DocumentNotFoundError') {
         return res.status(ERROR_CODE_NOT_FOUND).send({ message: `Карточка с id ${req.params.cardId} не найдена` });
       }
-      return res.status(ERROR_CODE_ON_SERVER).send({ message: 'Произошла ошибка на сервере' });
+      return res.status(ERROR_CODE_INTERNAL_SERVER).send({ message: 'Произошла ошибка на сервере' });
     });
 };
 
@@ -64,13 +70,16 @@ const deleteLike = (req, res) => {
   Card.findByIdAndUpdate(cardId, { $pull: { likes: _id } }, { new: true })
     .orFail()
     .then((card) => {
-      res.status(201).send({ data: card });
+      res.status(200).send({ data: card });
     })
     .catch((err) => {
+      if (err.name === 'CastError') {
+        return res.status(ERROR_CODE_BAD_REQUEST).send({ message: 'Введен некорректный идентификатор карточки' });
+      }
       if (err.name === 'DocumentNotFoundError') {
         return res.status(ERROR_CODE_NOT_FOUND).send({ message: `Карточка с id ${req.params.cardId} не найдена` });
       }
-      return res.status(ERROR_CODE_ON_SERVER).send({ message: 'Произошла ошибка на сервере' });
+      return res.status(ERROR_CODE_INTERNAL_SERVER).send({ message: 'Произошла ошибка на сервере' });
     });
 };
 
