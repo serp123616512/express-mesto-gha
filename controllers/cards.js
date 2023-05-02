@@ -1,11 +1,15 @@
 const Card = require('../moduls/cards');
 
+const ERROR_CODE_VALIDATION = 400;
+const ERROR_CODE_NOT_FOUND = 404;
+const ERROR_CODE_ON_SERVER = 500;
+
 const getCards = (req, res) => {
   Card.find({})
     .then((cards) => {
-      res.send({ data: cards });
+      res.status(200).send({ data: cards });
     })
-    .catch();
+    .catch(() => res.status(ERROR_CODE_ON_SERVER).send({ message: 'Произошла ошибка на сервере' }));
 };
 
 const postCard = (req, res) => {
@@ -15,36 +19,59 @@ const postCard = (req, res) => {
     .then((card) => {
       res.status(201).send({ data: card });
     })
-    .catch();
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        return res.status(ERROR_CODE_VALIDATION).send({ message: 'Введены некорректные данные' });
+      }
+      return res.status(ERROR_CODE_ON_SERVER).send({ message: 'Произошла ошибка на сервере' });
+    });
 };
 
 const deleteCard = (req, res) => {
   const { cardId } = req.params;
   Card.findByIdAndRemove(cardId)
+    .orFail()
     .then((card) => {
-      res.send({ data: card });
+      res.status(200).send({ data: card });
     })
-    .catch();
+    .catch((err) => {
+      if (err.name === 'DocumentNotFoundError') {
+        return res.status(ERROR_CODE_NOT_FOUND).send({ message: `Карточка с id ${req.params.cardId} не найдена` });
+      }
+      return res.status(ERROR_CODE_ON_SERVER).send({ message: 'Произошла ошибка на сервере' });
+    });
 };
 
 const putLike = (req, res) => {
   const { cardId } = req.params;
   const { _id } = req.user;
   Card.findByIdAndUpdate(cardId, { $addToSet: { likes: _id } }, { new: true })
+    .orFail()
     .then((card) => {
       res.status(201).send({ data: card });
     })
-    .catch();
+    .catch((err) => {
+      if (err.name === 'DocumentNotFoundError') {
+        return res.status(ERROR_CODE_NOT_FOUND).send({ message: `Карточка с id ${req.params.cardId} не найдена` });
+      }
+      return res.status(ERROR_CODE_ON_SERVER).send({ message: 'Произошла ошибка на сервере' });
+    });
 };
 
 const deleteLike = (req, res) => {
   const { cardId } = req.params;
   const { _id } = req.user;
   Card.findByIdAndUpdate(cardId, { $pull: { likes: _id } }, { new: true })
+    .orFail()
     .then((card) => {
       res.status(201).send({ data: card });
     })
-    .catch();
+    .catch((err) => {
+      if (err.name === 'DocumentNotFoundError') {
+        return res.status(ERROR_CODE_NOT_FOUND).send({ message: `Карточка с id ${req.params.cardId} не найдена` });
+      }
+      return res.status(ERROR_CODE_ON_SERVER).send({ message: 'Произошла ошибка на сервере' });
+    });
 };
 
 module.exports = {
