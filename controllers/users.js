@@ -21,6 +21,9 @@ const getUser = (req, res) => {
       res.status(200).send({ data: user });
     })
     .catch((err) => {
+      if (err.name === 'CastError') {
+        return res.status(ERROR_CODE_BAD_REQUEST).send({ message: 'Введен некорректный идентификатор пользователя' });
+      }
       if (err.name === 'DocumentNotFoundError') {
         return res.status(ERROR_CODE_NOT_FOUND).send({ message: `Карточка с id ${req.params.cardId} не найдена` });
       }
@@ -45,7 +48,7 @@ const postUser = (req, res) => {
 const patchUserProfile = (req, res) => {
   const { name, about } = req.body;
   const userId = req.user._id;
-  User.findByIdAndUpdate(userId, { name, about })
+  User.findByIdAndUpdate(userId, { name, about }, { new: true })
     .orFail()
     .then((user) => {
       res.status(201).send({ data: user });
@@ -67,7 +70,7 @@ const patchUserProfile = (req, res) => {
 const patchUserAvatar = (req, res) => {
   const { avatar } = req.body;
   const userId = req.user._id;
-  User.findByIdAndUpdate(userId, { avatar })
+  User.findByIdAndUpdate(userId, { avatar }, { new: true })
     .orFail()
     .then((user) => {
       res.status(201).send({ data: user });
