@@ -1,9 +1,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const { userRouter, cardRouter } = require('./routes');
+const router = require('./routes');
 
 const { PORT = 3000 } = process.env;
-const ERROR_CODE_NOT_FOUND = 404;
 
 const app = express();
 
@@ -15,13 +14,11 @@ app.use(express.json());
 
 app.use((req, res, next) => {
   req.user = {
-    _id: '6450e6f0c7e6daf78ab624c0',
+    _id: '6450fb0d5c56c80b60f3469d',
   };
 
   next();
 });
-app.use(userRouter);
-app.use(cardRouter);
-app.use('*', (req, res) => res.status(ERROR_CODE_NOT_FOUND).send({ message: 'Данный URL не существует' }));
+app.use(router);
 
 app.listen(PORT);

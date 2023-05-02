@@ -1,15 +1,15 @@
+const mongoose = require('mongoose');
+const http2 = require('node:http2');
 const User = require('../moduls/users');
 
-const ERROR_CODE_BAD_REQUEST = 400;
-const ERROR_CODE_NOT_FOUND = 404;
-const ERROR_CODE_INTERNAL_SERVER = 500;
+const { ValidationError, CastError, DocumentNotFoundError } = mongoose.Error;
 
 const getUsers = (req, res) => {
   User.find({})
     .then((users) => {
-      res.status(200).send({ data: users });
+      res.status(http2.constants.HTTP_STATUS_OK).send({ data: users });
     })
-    .catch(() => res.status(ERROR_CODE_INTERNAL_SERVER).send({ message: 'Произошла ошибка на сервере' }));
+    .catch(() => res.status(http2.constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Произошла ошибка на сервере' }));
 };
 
 const getUser = (req, res) => {
@@ -18,16 +18,16 @@ const getUser = (req, res) => {
   User.findById(userId)
     .orFail()
     .then((user) => {
-      res.status(200).send({ data: user });
+      res.status(http2.constants.HTTP_STATUS_OK).send({ data: user });
     })
     .catch((err) => {
-      if (err.name === 'CastError') {
-        return res.status(ERROR_CODE_BAD_REQUEST).send({ message: 'Введен некорректный идентификатор пользователя' });
+      if (err instanceof CastError) {
+        return res.status(http2.constants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Введен некорректный идентификатор пользователя' });
       }
-      if (err.name === 'DocumentNotFoundError') {
-        return res.status(ERROR_CODE_NOT_FOUND).send({ message: `Карточка с id ${req.params.cardId} не найдена` });
+      if (err instanceof DocumentNotFoundError) {
+        return res.status(http2.constants.HTTP_STATUS_NOT_FOUND).send({ message: `Карточка с id ${req.params.cardId} не найдена` });
       }
-      return res.status(ERROR_CODE_INTERNAL_SERVER).send({ message: 'Произошла ошибка на сервере' });
+      return res.status(http2.constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Произошла ошибка на сервере' });
     });
 };
 
@@ -35,13 +35,13 @@ const postUser = (req, res) => {
   const { name, about, avatar } = req.body;
   User.create({ name, about, avatar })
     .then((user) => {
-      res.status(201).send({ data: user });
+      res.status(http2.constants.HTTP_STATUS_CREATED).send({ data: user });
     })
     .catch((err) => {
-      if (err.name === 'ValidationError') {
-        return res.status(ERROR_CODE_BAD_REQUEST).send({ message: 'Введены некорректные данные' });
+      if (err instanceof ValidationError) {
+        return res.status(http2.constants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Введены некорректные данные' });
       }
-      return res.status(ERROR_CODE_INTERNAL_SERVER).send({ message: 'Произошла ошибка на сервере' });
+      return res.status(http2.constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Произошла ошибка на сервере' });
     });
 };
 
@@ -51,19 +51,19 @@ const patchUserProfile = (req, res) => {
   User.findByIdAndUpdate(userId, { name, about }, { runValidators: true, new: true })
     .orFail()
     .then((user) => {
-      res.status(200).send({ data: user });
+      res.status(http2.constants.HTTP_STATUS_OK).send({ data: user });
     })
     .catch((err) => {
-      if (err.name === 'CastError') {
-        return res.status(ERROR_CODE_BAD_REQUEST).send({ message: 'Введен некорректный идентификатор пользователя' });
+      if (err instanceof CastError) {
+        return res.status(http2.constants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Введен некорректный идентификатор пользователя' });
       }
-      if (err.name === 'DocumentNotFoundError') {
-        return res.status(ERROR_CODE_NOT_FOUND).send({ message: `Пользователь с id ${userId} не найден` });
+      if (err instanceof DocumentNotFoundError) {
+        return res.status(http2.constants.HTTP_STATUS_NOT_FOUND).send({ message: `Пользователь с id ${userId} не найден` });
       }
-      if (err.name === 'ValidationError') {
-        return res.status(ERROR_CODE_BAD_REQUEST).send({ message: 'Введены некорректные данные' });
+      if (err instanceof ValidationError) {
+        return res.status(http2.constants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Введены некорректные данные' });
       }
-      return res.status(ERROR_CODE_INTERNAL_SERVER).send({ message: 'Произошла ошибка на сервере' });
+      return res.status(http2.constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Произошла ошибка на сервере' });
     });
 };
 
@@ -73,19 +73,19 @@ const patchUserAvatar = (req, res) => {
   User.findByIdAndUpdate(userId, { avatar }, { runValidators: true, new: true })
     .orFail()
     .then((user) => {
-      res.status(200).send({ data: user });
+      res.status(http2.constants.HTTP_STATUS_OK).send({ data: user });
     })
     .catch((err) => {
-      if (err.name === 'CastError') {
-        return res.status(ERROR_CODE_BAD_REQUEST).send({ message: 'Введен некорректный идентификатор пользователя' });
+      if (err instanceof CastError) {
+        return res.status(http2.constants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Введен некорректный идентификатор пользователя' });
       }
-      if (err.name === 'DocumentNotFoundError') {
-        return res.status(ERROR_CODE_NOT_FOUND).send({ message: `Пользователь с id ${userId} не найден` });
+      if (err instanceof DocumentNotFoundError) {
+        return res.status(http2.constants.HTTP_STATUS_NOT_FOUND).send({ message: `Пользователь с id ${userId} не найден` });
       }
-      if (err.name === 'ValidationError') {
-        return res.status(ERROR_CODE_BAD_REQUEST).send({ message: 'Введены некорректные данные' });
+      if (err instanceof ValidationError) {
+        return res.status(http2.constants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Введены некорректные данные' });
       }
-      return res.status(ERROR_CODE_INTERNAL_SERVER).send({ message: 'Произошла ошибка на сервере' });
+      return res.status(http2.constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Произошла ошибка на сервере' });
     });
 };
 
