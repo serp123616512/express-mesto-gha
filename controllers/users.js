@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const http2 = require('node:http2');
+const bcrypt = require('bcryptjs');
 const User = require('../moduls/users');
 
 const { ValidationError, CastError, DocumentNotFoundError } = mongoose.Error;
@@ -31,18 +32,40 @@ const getUser = (req, res) => {
     });
 };
 
-const postUser = (req, res) => {
-  const { name, about, avatar } = req.body;
-  User.create({ name, about, avatar })
-    .then((user) => {
-      res.status(http2.constants.HTTP_STATUS_CREATED).send({ data: user });
-    })
-    .catch((err) => {
-      if (err instanceof ValidationError) {
-        return res.status(http2.constants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Введены некорректные данные' });
-      }
-      return res.status(http2.constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Произошла ошибка на сервере' });
+const postUser = async (req, res) => {
+  // console.log(http2.constants);
+  const {
+    name,
+    about,
+    avatar,
+    email,
+    password,
+  } = req.body;
+
+  try {
+    const hash = await bcrypt.hash(password, 10);
+    const user = await User.create({
+      name,
+      about,
+      avatar,
+      email,
+      password: hash,
     });
+
+    if (user) {
+      return res.status(http2.constants.HTTP_STATUS_CREATED).send({ data: user });
+    }
+
+    return res.status(http2.constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Произошла ошибка на сервере' });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(http2.constants.HTTP_STATUS_CONFLICT).send({ message: 'Пользователь с таким email уже существует' });
+    }
+    if (err instanceof ValidationError) {
+      return res.status(http2.constants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Введены некорректные данные' });
+    }
+    return res.status(http2.constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Произошла ошибка на сервере' });
+  }
 };
 
 const patchUserProfile = (req, res) => {
