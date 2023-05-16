@@ -1,39 +1,43 @@
-const mongoose = require('mongoose');
 const http2 = require('node:http2');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const User = require('../moduls/users');
 
-const { ValidationError, CastError, DocumentNotFoundError } = mongoose.Error;
+const NotFoundError = require('../errors/NotFoundError');
+const ConflictError = require('../errors/ConflictError');
 
-const getUsers = (req, res) => {
+const getUsers = (req, res, next) => {
   User.find({})
     .then((users) => {
       res.status(http2.constants.HTTP_STATUS_OK).send({ data: users });
     })
-    .catch(() => res.status(http2.constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Произошла ошибка на сервере' }));
+    .catch(next);
 };
 
-const getUser = (req, res) => {
+const getUserById = (req, res, next) => {
   const { userId } = req.params;
 
   User.findById(userId)
-    .orFail()
+    .then((user) => {
+      if (!user) {
+        throw new NotFoundError(`Пользователь с id ${req.params.userId} не найден`);
+      }
+      res.status(http2.constants.HTTP_STATUS_OK).send({ data: user });
+    })
+    .catch(next);
+};
+
+const getUserByMe = (req, res, next) => {
+  const { _id } = req.user;
+
+  User.findById(_id)
     .then((user) => {
       res.status(http2.constants.HTTP_STATUS_OK).send({ data: user });
     })
-    .catch((err) => {
-      if (err instanceof CastError) {
-        return res.status(http2.constants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Введен некорректный идентификатор пользователя' });
-      }
-      if (err instanceof DocumentNotFoundError) {
-        return res.status(http2.constants.HTTP_STATUS_NOT_FOUND).send({ message: `Карточка с id ${req.params.cardId} не найдена` });
-      }
-      return res.status(http2.constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Произошла ошибка на сервере' });
-    });
+    .catch(next);
 };
 
-const postUser = async (req, res) => {
-  // console.log(http2.constants);
+const postUser = async (req, res, next) => {
   const {
     name,
     about,
@@ -52,45 +56,36 @@ const postUser = async (req, res) => {
       password: hash,
     });
 
-    if (user) {
-      return res.status(http2.constants.HTTP_STATUS_CREATED).send({ data: user });
-    }
-
-    return res.status(http2.constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Произошла ошибка на сервере' });
+    return res.status(http2.constants.HTTP_STATUS_CREATED).send({ data: user });
   } catch (err) {
     if (err.code === 11000) {
-      return res.status(http2.constants.HTTP_STATUS_CONFLICT).send({ message: 'Пользователь с таким email уже существует' });
+      return next(new ConflictError('Пользователь с таким email уже существует'));
     }
-    if (err instanceof ValidationError) {
-      return res.status(http2.constants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Введены некорректные данные' });
-    }
-    return res.status(http2.constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Произошла ошибка на сервере' });
+    return next(err);
   }
 };
 
-const patchUserProfile = (req, res) => {
+const signIn = (req, res, next) => {
+  const { email, password } = req.body;
+  return User.findUserByCredentials(email, password)
+    .then((user) => {
+      const token = jwt.sign({ _id: user._id }, 'secret-key', { expiresIn: '7d' });
+      return res.cookie('jwt', token, { maxAge: 3600000, httpOnly: true }).send({ token }).end();
+    })
+    .catch(next);
+};
+
+const patchUserProfile = (req, res, next) => {
   const { name, about } = req.body;
   const userId = req.user._id;
   User.findByIdAndUpdate(userId, { name, about }, { runValidators: true, new: true })
-    .orFail()
     .then((user) => {
       res.status(http2.constants.HTTP_STATUS_OK).send({ data: user });
     })
-    .catch((err) => {
-      if (err instanceof CastError) {
-        return res.status(http2.constants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Введен некорректный идентификатор пользователя' });
-      }
-      if (err instanceof DocumentNotFoundError) {
-        return res.status(http2.constants.HTTP_STATUS_NOT_FOUND).send({ message: `Пользователь с id ${userId} не найден` });
-      }
-      if (err instanceof ValidationError) {
-        return res.status(http2.constants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Введены некорректные данные' });
-      }
-      return res.status(http2.constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Произошла ошибка на сервере' });
-    });
+    .catch(next);
 };
 
-const patchUserAvatar = (req, res) => {
+const patchUserAvatar = (req, res, next) => {
   const { avatar } = req.body;
   const userId = req.user._id;
   User.findByIdAndUpdate(userId, { avatar }, { runValidators: true, new: true })
@@ -98,24 +93,15 @@ const patchUserAvatar = (req, res) => {
     .then((user) => {
       res.status(http2.constants.HTTP_STATUS_OK).send({ data: user });
     })
-    .catch((err) => {
-      if (err instanceof CastError) {
-        return res.status(http2.constants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Введен некорректный идентификатор пользователя' });
-      }
-      if (err instanceof DocumentNotFoundError) {
-        return res.status(http2.constants.HTTP_STATUS_NOT_FOUND).send({ message: `Пользователь с id ${userId} не найден` });
-      }
-      if (err instanceof ValidationError) {
-        return res.status(http2.constants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Введены некорректные данные' });
-      }
-      return res.status(http2.constants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Произошла ошибка на сервере' });
-    });
+    .catch(next);
 };
 
 module.exports = {
   getUsers,
-  getUser,
+  getUserById,
+  getUserByMe,
   postUser,
+  signIn,
   patchUserProfile,
   patchUserAvatar,
 };
