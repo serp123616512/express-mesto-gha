@@ -48,14 +48,14 @@ const postUser = async (req, res, next) => {
 
   try {
     const hash = await bcrypt.hash(password, 10);
-    const user = await User.create({
+    const createdUser = await User.create({
       name,
       about,
       avatar,
       email,
       password: hash,
     });
-
+    const user = await User.findById(createdUser._id);
     return res.status(http2.constants.HTTP_STATUS_CREATED).send({ data: user });
   } catch (err) {
     if (err.code === 11000) {
