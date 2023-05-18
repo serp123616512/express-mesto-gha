@@ -1,6 +1,9 @@
+const mongoose = require('mongoose');
 const http2 = require('node:http2');
 const Card = require('../moduls/cards');
 
+const { ValidationError } = mongoose.Error;
+const BadRequestError = require('../errors/BadRequestError');
 const NotFoundError = require('../errors/NotFoundError');
 const ForbiddenError = require('../errors/ForbiddenError');
 
@@ -21,7 +24,12 @@ const postCard = (req, res, next) => {
     .then((card) => {
       res.status(http2.constants.HTTP_STATUS_CREATED).send({ data: card });
     })
-    .catch(next);
+    .catch((err) => {
+      if (err instanceof ValidationError) {
+        return next(new BadRequestError(err.errors.link.properties.message));
+      }
+      return next(err);
+    });
 };
 
 const deleteCard = (req, res, next) => {
@@ -29,10 +37,8 @@ const deleteCard = (req, res, next) => {
   const { _id } = req.user;
 
   Card.findById(cardId)
+    .orFail(new NotFoundError(`Карточка с id ${req.params.cardId} не найдена`))
     .then((card) => {
-      if (!card) {
-        throw new NotFoundError(`Карточка с id ${req.params.cardId} не найдена`);
-      }
       if (card.owner.toString() !== _id) {
         throw new ForbiddenError('Недостаточно прав для удаления данной карточки');
       }

@@ -1,8 +1,11 @@
+const mongoose = require('mongoose');
 const http2 = require('node:http2');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../moduls/users');
 
+const { ValidationError } = mongoose.Error;
+const BadRequestError = require('../errors/BadRequestError');
 const NotFoundError = require('../errors/NotFoundError');
 const ConflictError = require('../errors/ConflictError');
 
@@ -18,10 +21,8 @@ const getUserById = (req, res, next) => {
   const { userId } = req.params;
 
   User.findById(userId)
+    .orFail(new NotFoundError(`Пользователь с id ${req.params.userId} не найден`))
     .then((user) => {
-      if (!user) {
-        throw new NotFoundError(`Пользователь с id ${req.params.userId} не найден`);
-      }
       res.status(http2.constants.HTTP_STATUS_OK).send({ data: user });
     })
     .catch(next);
@@ -58,6 +59,9 @@ const postUser = async (req, res, next) => {
     const user = await User.findById(createdUser._id);
     return res.status(http2.constants.HTTP_STATUS_CREATED).send({ data: user });
   } catch (err) {
+    if (err instanceof ValidationError) {
+      return next(new BadRequestError(err.errors.avatar.properties.message));
+    }
     if (err.code === 11000) {
       return next(new ConflictError('Пользователь с таким email уже существует'));
     }
@@ -89,11 +93,15 @@ const patchUserAvatar = (req, res, next) => {
   const { avatar } = req.body;
   const userId = req.user._id;
   User.findByIdAndUpdate(userId, { avatar }, { runValidators: true, new: true })
-    .orFail()
     .then((user) => {
       res.status(http2.constants.HTTP_STATUS_OK).send({ data: user });
     })
-    .catch(next);
+    .catch((err) => {
+      if (err instanceof ValidationError) {
+        return next(new BadRequestError(err.errors.avatar.properties.message));
+      }
+      return next(err);
+    });
 };
 
 module.exports = {
