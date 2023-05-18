@@ -1,4 +1,5 @@
 const { celebrate, Joi } = require('celebrate');
+const URL = require('../../utils/constants');
 
 const validationGetUserById = celebrate({
   params: Joi.object().keys({
@@ -10,7 +11,7 @@ const validationPostUser = celebrate({
   body: Joi.object().keys({
     name: Joi.string().min(2).max(30),
     about: Joi.string().min(2).max(30),
-    avatar: Joi.string(),
+    avatar: Joi.string().regex(URL),
     email: Joi.string().required().email(),
     password: Joi.string().required().min(8),
   }),
@@ -32,7 +33,7 @@ const validationPatchUserProfile = celebrate({
 
 const validationPatchUserAvatar = celebrate({
   body: Joi.object().keys({
-    avatar: Joi.string().required(),
+    avatar: Joi.string().required().regex(URL),
   }),
 });
 
